@@ -1,0 +1,35 @@
+
+h1 {
+	font-family: sans-serif;
+}
+
+
+/*
+ * Style tweaks
+ * --------------------------------------------------
+ */
+body {
+	padding-top: 70px;
+	background-color: #ffffff;
+ 	overflow-x: hidden; /* Prevent scroll on narrow devices */
+}
+
+footer {
+  padding: 30px 0;
+}
+
+.menu {
+	background-color: #bfbfbf;
+	border-style: solid;
+    border-width: 1px;
+    float: right;
+    text-align: left;
+    width: auto;
+    padding: 9px 20px 20px 20px;
+    margin: 150px 70px 0 10px;
+}
+
+#ex_day .slider-selection {
+	background: #BABABA;
+}
+
