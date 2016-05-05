@@ -1,0 +1,56 @@
+.subunit {
+  fill: white;
+  stroke: steelblue;
+  stroke-width: 1px;
+}
+
+.subunit-boundary {
+  fill: none;
+  stroke: #777;
+  stroke-dasharray: 2,2;
+  stroke-linejoin: round;
+}
+
+.subunit:hover {
+  opacity: 0.7;
+  fill: lightyellow;
+}
+
+
+
+.exterior-boundary {
+  fill: none;
+  stroke: black;
+  stroke-linejoin: round;
+  stroke-width: 1.5px;
+}
+
+div.tooltip {
+  position: absolute;
+  text-align: center;
+  width: 75px;
+  padding: 2px;
+  font: 12px sans-serif;
+  color: white;
+  background: black;
+  border: 0px;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.menu {
+  background-color: #bfbfbf;
+  border-style: solid;
+    border-width: 1px;
+    float: right;
+    text-align: left;
+    width: auto;
+    padding: 18px 20px 20px 20px;
+    margin: 50px 70px 0 10px;
+}
+
+body {
+  padding-top: 70px;
+  background-color: #ffffff;
+  overflow-x: hidden; /* Prevent scroll on narrow devices */
+}

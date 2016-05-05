@@ -1,4 +1,24 @@
 
+// Radio button
+
+var current_choice = 2;
+var current_json = '/data/cal_data_year.csv';
+
+function handleClick(myRadio) {
+    current_choice = myRadio.value;
+
+    if (+current_choice == 0 ){
+    	current_json = '/data/cal_data_day.csv';
+    	console.log(0);
+    } else if ( current_choice == 1) {
+    	current_json = '/data/cal_data_month.csv';
+    	console.log(1);
+    } else if ( current_choice == 2) {
+    	current_json = '/data/cal_data_year.csv';
+    	console.log(2);
+    }
+}
+
 var day_slider = $("#ex_day").slider();
 var month_slider = $("#ex_month").slider();
 var year_slider = $("#ex_year").slider();
@@ -6,6 +26,10 @@ var year_slider = $("#ex_year").slider();
 var original_day;
 var original_month;
 var original_year;
+
+var check_day = $('input[name="choice"]:checked').val();
+var check_month = $('input[name="choice"]:checked').val();
+var check_year = $('input[name="choice"]:checked').val();
 
 $('#ex_day').slider().on('slideStart', function(ev){
     original_day = day_slider.val();
@@ -200,9 +224,6 @@ legend.append('text')
 d3.json("/data/calif_geo.json", function(error, topo) { 
 
     console.log(topo);
-  	// states = topojson.feature(topo, topo.objects.states).features
-    // set projection parameters
-
     // add a rectangle to see the bound of the svg
 	g.append("rect")
 		.attr('width', width+100)
@@ -222,63 +243,20 @@ d3.json("/data/calif_geo.json", function(error, topo) {
 
  });
 
-// d3.csv("data/728915.csv").row(function (d, i) {
-//     if (isNaN(d.LATITUDE) || isNaN(d.LONGITUDE)) {
-//             return null;
-//         } else {
-//       return {
-//         station: d.STATION,
-//         station_name: d.STATION_NAME,
-//         elevation: +d.ELEVATION,
-//         latitude: +d.LATITUDE,
-//         longitude: +d.LONGITUDE,
-//         date: d.DATE,
-//         hpcp: +d.HPCP
-//       };
-//     }
-//   }).get(function(error, rows) {
-//     console.log("Loaded " + rows.length + " rows");
-
-//     dataset=rows
-
-//     // // add circles to svg
-// 	svg.selectAll("circle")
-// 		.data(dataset)
-// 		.enter()
-// 		.append("circle")
-// 		.attr("cx", function (d) { return projection([d.longitude, d.latitude])[0]; })
-// 		.attr("cy", function (d) { return projection([d.longitude, d.latitude])[1]; })
-// 		.attr("r", function (d) { 
-// 				var radius;
-// 				if (d.hpcp < 2) { radius = "4px";
-// 				} else if (d.hpcp < 5) { radius = "6px";
-// 				} else if (d.hpcp < 20) { radius = "8px"; 
-// 				} else {radius = "10px"; }
-// 				return radius; 
-// 			})
-// 		.style("fill", function(d) {
-// 			var returnColor;
-// 			if (d.hpcp < 2) { returnColor = "#8ED2C9 ";
-// 			} else if (d.hpcp < 5) { returnColor = "#8ED2C9";
-// 			} else if (d.hpcp < 20) { returnColor = "##FF7A5A"; 
-// 			} else {returnColor = "	#FF7A5A"; }
-// 			return returnColor;
-// 		})
-// 		// .append("path")
-// 	})
-
 function updateData(day, month, year) {
 	// var date = this.getAttribute("value");
 	console.log(day+'/'+month+'/'+year)
-	d3.csv("/data/cal_data_day.csv").row(function (d, i) {
+	d3.csv("/data/cal_data_month.csv").row(function (d, i) {
 		// var str = "20090101 00:00:00"; 
 		// var n = d.DAY.search(date);
-
-		var n_day = d.DAY.search(day)
+		// console.log('couc');
+		// var n_day = d.DAY.search(day)
 		var n_month = d.MONTH.search(month)
 		var n_year = d.YEAR.search(year)
-
-		if (n_day==0 && n_month==0 && n_year==0){
+		// console.log(n_day);
+		// console.log(n_month);
+		// console.log(n_year);
+		if (n_month==0 && n_year==0){
 			if (isNaN(d.LATITUDE) || isNaN(d.LONGITUDE)) {
 				return null;
 			}else {
@@ -288,9 +266,8 @@ function updateData(day, month, year) {
 					elevation: +d.ELEVATION,
 					latitude: +d.LATITUDE,
 					longitude: +d.LONGITUDE,
-					year: +d.YEAR,
 					month: +d.MONTH,
-					day: +d.DAY,
+					year: +d.YEAR,
 					hpcp: +d.HPCP
 				};
 			}
