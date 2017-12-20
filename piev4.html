@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <!-- <link rel="stylesheet" href="/bower_components/bootstrap/dist/css/bootstrap.min.css" /> -->
+  <link rel="stylesheet" href="css/bootstrap-datetimepicker.min.css" />
+  <!-- Optional theme -->
+<!--   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous"> -->
+</head>
+
+<style>
+body{
+    width:1060px;
+    margin:50px auto;
+    background-color: #475a6c;
+    /*color: #fff;*/
+}
+path {  
+  stroke: #fff; 
+}
+path:hover {  opacity:0.9; }
+rect:hover {  fill:blue; }
+
+.legend tr{    
+  border-bottom:1px 
+  solid grey; 
+}
+.legend tr:first-child{    
+  border-top:1px 
+  solid grey; 
+}
+
+.axishG, .axislC {
+  font: 2px sans-serif; 
+
+  /*stroke: #a2d9e1;
+  stroke-width: 1px;*/
+}
+
+.axishG path, .axishG line, .axislC path, .axislC line {
+    fill: none;
+    stroke: #000;
+    /*stroke: grey;*/
+    stroke-width: 1;
+    shape-rendering: crispEdges;
+}
+
+.axishG text, .axislC text {
+    font-family: sans-serif;
+    font-size: 11px;
+    fill: #a5b4c2;
+}
+
+.legend{
+    margin-bottom:10px;
+    margin-left: 200px;
+    display:inline-block;
+    border-collapse: collapse;
+    border-spacing: 0px;
+    color: #a5b4c2;
+}
+.legend td{
+    padding:4px 5px;
+    vertical-align:bottom;
+}
+.legendFreq, .legendPerc{
+    align:right;
+    width:50px;
+}
+
+.lineChart { 
+    stroke: rgb(200, 1, 40);
+    stroke-width: 2;
+    fill: none;
+}
+
+h1 {
+  text-align: center;
+  color: #a5b4c2;
+}
+
+.tooltip {
+  position: absolute;
+  top: 100px;
+  left: 100px;
+  -moz-border-radius:5px;
+  border-radius: 5px;
+  border: 2px solid #fff;
+  background: #fff;
+  opacity: .9;
+  color: black;
+  padding: 10px;
+  width: 200px;
+  font-size: 12px;
+  z-index: 10;
+}
+
+.tooltip .title {
+  font-size: 13px;
+}
+
+.tooltip .name {
+  font-weight:bold;
+}
+
+#datetimepicker1 { 
+  margin-right: 110px;
+}
+
+</style>
+
+<body>
+  <h1>Dashboard:</h1>
+  <br><br>
+  <div class="container">
+    <div class="row">
+      <div class='col-sm-4'>
+      </div>  
+        <div class='col-sm-4'>
+            <div class="form-group">
+                <div class='input-group date' id='datetimepicker1'>
+                    <input type='text' class="form-control" />
+                    <span class="input-group-addon">
+                        <span class="glyphicon glyphicon-calendar"></span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+  <div id='dashboard'></div>
+</div>
+  
+  <script type="text/javascript" src="js/jquery.min.js"></script>
+  <script type="text/javascript" src="js/moment.min.js"></script>
+  <script type="text/javascript" src="js/bootstrap-datetimepicker.min.js"></script>
+  <script src="http://d3js.org/d3.v4.min.js"></script>
+
+<script type="text/javascript">
+
+
+</script>
+
+<script type="text/javascript">
+
+function draw(id, data, date, time) {
+
+  var rData = process(data);
+  console.log(rData);
+
+  var filtered_data_date = rData.filter(function(item){
+    return item.format_date==date;         
+  });
+
+  var filtered_data_time = filtered_data_date.filter(function(item){
+    return item.format_time==time;         
+  });
+
+  var cur_data_date = filtered_data_date;
+  var cur_data_time = filtered_data_time;
+
+  var barColor = '#24abb6';
+  function segColor(c){ return {unavailable_supply:"#e08214", available_supply:"#41ab5d"}[c]; }
+
+  function histoGram(fD){
+    var hG={},    hGDim = {t: 60, r: 0, b: 30, l: 50};
+    hGDim.w = 700 - hGDim.l - hGDim.r, 
+    hGDim.h = 300 - hGDim.t - hGDim.b;
+        
+    //create svg for histogram.
+    var hGsvg = d3.select(id).append("svg")
+        .attr("width", hGDim.w + hGDim.l + hGDim.r)
+        .attr("height", hGDim.h + hGDim.t + hGDim.b).append("g")
+        .attr("transform", "translate(" + hGDim.l + "," + hGDim.t + ")");
+
+    // create function for x-axis mapping.
+    var xChart = d3.scaleBand()
+      .domain(fD.map(function(d) { return d[0]; }))
+      .rangeRound([0, hGDim.w])
+      .padding(0.1);
+
+    //  Logscale
+    var yChart = d3.scaleLog()
+      .base(Math.E)
+      .domain([d3.min(fD, function(d) { var val = parseInt(d[1]); return (val - val/2); }), d3.max(fD, function(d) { var val = parseInt(d[1]); return (val + val/2); })])
+      .range([hGDim.h, 0]);
+
+    var xAxis = d3.axisBottom(xChart);
+    var yAxis = d3.axisLeft(yChart)
+                  // .ticks(6)
+                  .tickFormat(function(d) { return d3.format(",")(parseInt(d / 1000000)) + "M"; });
+
+    // Add x-axis to the histogram svg.
+    hGsvg.append("g").attr("class", "x axishG")
+        .attr("transform", "translate(0," + hGDim.h + ")")
+        .call(xAxis);
+
+    //left axis
+    hGsvg.append("g")
+        .attr("class", "y axishG")
+        .call(yAxis);
+
+    // Create bars for histogram to contain rectangles and freq labels.
+    // var bars = hGsvg.selectAll(".bar").data(fD).enter()
+    //         .append("g").attr("class", "bar");
+    var bars = hGsvg.selectAll(".bar").remove().exit().data(fD);
+    
+    //create the rectangles.
+    bars.enter().append("g").attr("class", "bar").append("rect")
+        .attr("x", function(d) { return xChart(d[0]); })
+        .attr("y", function(d) { return yChart(d[1]); })
+        .attr("width", xChart.bandwidth())
+        .attr("height", function(d) { return hGDim.h - yChart(d[1]); })
+        .attr('fill',barColor)
+        .on("mouseover",mouseover)// mouseover is defined below.
+        .on("mouseout",mouseout);// mouseout is defined below.
+        
+    //Create the frequency labels above the rectangles.
+    bars.enter().append("g").attr("class", "bar").append("text").text(function(d){ return d3.format(".4s")(parseInt(d[1]));}) //   (parseInt(d[1] / 1000000)) + "M";
+        .attr("x", function(d) { return xChart(d[0])+xChart.bandwidth()/2; })
+        .attr("y", function(d) { return yChart(d[1])-5; })
+        .attr("text-anchor", "middle")
+        .attr("fill", "#b7d5f6");;
+      
+
+    // create function to update the bars. This will be used by pie-chart.
+    hG.update = function(nD, color){
+        
+        // cheat trick for value with 0 for log scale
+        nD = nD.filter(function(d){ return d[1] != 0 ;});
+
+        // update the domain of the y-axis map to reflect change in frequencies.
+        xChart.domain(nD.map(function(d) { return d[0]; }));
+        yChart.domain([
+          d3.min(nD, function(d) { var val = parseInt(d[1]); return (val - val/2); }), 
+          d3.max(nD, function(d) { var val = parseInt(d[1]); return (val + val/2); })]);
+        
+        // Attach the new data to the bars.
+
+        // // hGsvg.selectAll(".bar").
+        // var bars = hGsvg.selectAll(".bar").data(nD);
+
+        // // transition the height and color of rectangles.
+
+        // bars.select("rect").transition().duration(500)
+        //     .attr("x", function(d) { return xChart(d[0]); })
+        //     .attr("y", function(d) {return yChart(d[1]); })
+        //     .attr("height", function(d) { return hGDim.h - yChart(d[1]); })
+        //     .attr("fill", color);
+
+        // // transition the frequency labels location and change value.
+        // bars.select("text").transition().duration(500)
+        //     .text(function(d){ return d3.format(".4s")(parseInt(d[1])); })
+        //     .attr("x", function(d) { return xChart(d[0])+xChart.bandwidth()/2; })
+        //     .attr("y", function(d) {return yChart(d[1])-5; });
+
+        // hGsvg.select(".y.axishG")
+        // .call(yAxis);
+
+        // hGsvg.select(".x.axishG")
+        // .call(xAxis);
+
+
+        var bars = hGsvg.selectAll(".bar").remove().exit().data(nD).enter().append("g").attr("class", "bar");
+        // transition the height and color of rectangles.
+
+        var rect = bars.append("rect")
+            .on("mouseover",mouseover)// mouseover is defined below.
+            .on("mouseout",mouseout)
+            .transition().duration(650)
+            .attr("x", function(d) { return xChart(d[0]); })
+            .attr("y", function(d) { return yChart(d[1]); })
+            .attr("width", xChart.bandwidth())
+            .attr("height", function(d) { return hGDim.h - yChart(d[1]); })
+            .attr('fill',color);
+
+        // transition the frequency labels location and change value.
+        bars.append("text").transition().duration(650)
+            .text(function(d){ return d3.format(".4s")(parseInt(d[1])); })
+            .attr("x", function(d) { return xChart(d[0])+xChart.bandwidth()/2; })
+            .attr("y", function(d) { return yChart(d[1])-5; })
+            .attr("text-anchor", "middle")
+            .attr("fill", "#b7d5f6");
+
+        hGsvg.select(".y.axishG")
+        .call(yAxis);
+
+        hGsvg.select(".x.axishG")
+        .call(xAxis);
+    }
+
+    function mouseover(d){  // utility function to be called on mouseover.
+      // filter for selected state.
+      var st = cur_data_time.filter(function(s){ return s.symbol == d[0];})[0];
+      var nD = [
+        { type: 'available_supply', freq: st.available_supply},
+        { type: 'unavailable_supply', freq: st.unavailable_supply }
+      ];
+
+      var nLD = rData.filter(function(s){
+          return s.symbol==d[0];         
+      });                  
+      // call update functions of pie-chart and legend.    
+      pC.update(nD);
+      lC.update(nLD);
+      leg.update(nD);
+    }
+    
+    function mouseout(d){    // utility function to be called on mouseout.
+      // reset the pie-chart and legend.    
+      pC.update(tF);
+      // lC.update(cD);
+      leg.update(tF);
+    } 
+  
+    return hG;
+  }
+
+  // function to handle pieChart.
+  function pieChart(pD){
+      var pC ={},    pieDim ={w:215, h: 215};
+      pieDim.r = Math.min(pieDim.w, pieDim.h) / 2;
+              
+      // create svg for pie chart.
+      var piesvg = d3.select(id).append("svg")
+          .attr("width", pieDim.w).attr("height", pieDim.h).append("g")
+          .attr("transform", "translate("+pieDim.w/2+","+pieDim.h/2+")");
+      
+      // create function to draw the arcs of the pie slices.
+      var arc = d3.arc().outerRadius(pieDim.r - 10).innerRadius(0);
+
+      // create a function to compute the pie slice angles.
+      var pie = d3.pie().sort(null).value(function(d) { return d.freq; });
+
+      // Draw the pie slices.
+      piesvg.selectAll("path").data(pie(pD)).enter().append("path").attr("d", arc)
+          .each(function(d) { this._current = d; })
+          .style("fill", function(d) { return segColor(d.data.type); })
+          .on("mouseover",mouseover).on("mouseout",mouseout);
+
+      // create function to update pie-chart. This will be used by histogram.
+      pC.update = function(nD){
+          piesvg.selectAll("path").data(pie(nD)).transition().duration(500)
+              .attrTween("d", arcTween);
+      }        
+      // Utility function to be called on mouseover a pie slice.
+      function mouseover(d){
+          // call the update function of histogram with new data.
+          hG.update(cur_data_time.map(function(v){ 
+              return [v.symbol,v[d.data.type]];}),segColor(d.data.type));
+
+          // console.log(d);
+          // console.log(cur_data_time[0][d.data.type]);
+          cur_data_time.forEach(function(v){
+            v.bc_data = parseFloat(v[d.data.type]) * parseFloat(v.price_eur);
+          });
+          // console.log(cur_data_time[0]);
+          bC.update(cur_data_time);
+      }
+      //Utility function to be called on mouseout a pie slice.
+      function mouseout(d){
+          // call the update function of histogram with all data.
+          hG.update(cur_data_time.map(function(v){
+            return [v.symbol,v.total_supply];}), barColor);
+
+          // cur_data_time.forEach(function(v){
+          //   v.bc_data = parseFloat(v.available_supply) * parseFloat(v.price_eur);
+          // });
+          // bC.update(cur_data_time);
+      }
+      // Animating the pie-slice requiring a custom function which specifies
+      // how the intermediate paths should be drawn.
+      function arcTween(a) {
+          var i = d3.interpolate(this._current, a);
+          this._current = i(0);
+          return function(t) { return arc(i(t));    };
+      }    
+      return pC;
+  }
+
+  function lineChart(lD){
+    var lC={},    
+        margin = {top: 30, right: 20, bottom: 50, left: 70},
+        width = 1100 - margin.left - margin.right,
+        height = 300 - margin.top - margin.bottom;
+        // padding = 100;
+    var color = d3.scaleOrdinal(d3.schemeCategory10);
+
+    var bisectDate = d3.bisector(d => d.parse_time).left;
+
+    var cur_data = lD;
+          
+      //create svg for histogram.
+    var lCsvg = d3.select(id).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    var x = d3.scaleTime().range([0, width]);
+    var y = d3.scaleLinear().range([height, 0]);
+
+    // Define the line
+    var valueline = d3.line()
+        .x(function(d) { return x(d.parse_time); })
+        .y(function(d) { return y(d.format_price_eur); });
+
+    // Scale the range of the data      
+    x.domain(d3.extent(cur_data, function(d) { return d.parse_time; }));
+    y.domain([d3.min(cur_data, function(d) { var val = parseFloat(d.format_price_eur); return (val - val/20); }), d3.max(cur_data, function(d) { var val = parseFloat(d.format_price_eur); return (val + val/20); })]);
+
+    // Add the valueline path.
+    lCsvg.append("path")
+        .attr("class", "lineChart")
+        .attr("d", valueline(cur_data));
+
+    // Add the X Axis
+    lCsvg.append("g")
+        .attr("class", "x axislC")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x));
+
+    lCsvg.append("text")
+            .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+            .attr("transform", "translate(" + (width/2) + " ," + (height + margin.top + 20) + ")")
+            .style("fill","#a5b4c2")
+            .text("Date");
+    
+    // Add the Y Axis
+    lCsvg.append("g")
+        .attr("class", "y axislC")
+        .call(d3.axisLeft(y));
+
+    lCsvg.append("text")
+            .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+            .attr("transform", "rotate(-90)")
+            .attr("y", 0 - margin.left)
+            .attr("x",0 - (height / 2))
+            .attr("dy", "1em")
+            .style("fill","#a5b4c2")
+            .text("Euro Price");
+
+     const focus = lCsvg.append('g')
+      .attr('class', 'focus')
+      .style('display', 'none');
+
+    focus.append('circle')
+      .attr('r', 4.5);
+
+    focus.append('line')
+      .classed('x', true);
+
+    focus.append('line')
+      .classed('y', true);
+
+    focus.append('text')
+      .attr('x', 9)
+      .attr('dy', '.35em')
+      .style("fill", "white");
+
+    lCsvg.append('rect')
+      .attr('class', 'overlay')
+      .attr('width', width)
+      .attr('height', height)
+      .on('mouseover', () => focus.style('display', null))
+      .on('mouseout', () => focus.style('display', 'none'))
+      .on('mousemove', mousemove);
+
+    d3.selectAll('.line')
+      .style("fill", "none")
+      .style("stroke", "steelblue")
+      .style("stroke-width", "1.5px");
+
+    d3.select('.overlay')
+      .style("fill", "none")
+      .style("pointer-events", "all");
+
+    d3.selectAll('.focus')
+      .style('opacity', 0.7);
+
+    d3.selectAll('.focus circle')
+      .style("fill", "none")
+      .style("stroke", "white");
+
+    d3.selectAll('.focus line')
+      .style("fill", "none")
+      .style("stroke", "white")
+      .style("stroke-width", "1.5px")
+      .style("stroke-dasharray", "3 3");
+    
+    function mousemove() {
+
+      var x0 = x.invert(d3.mouse(this)[0]);
+      var i = bisectDate(cur_data, x0, 1);
+      var d0 = cur_data[i - 1];
+      var d1 = cur_data[i];
+      var d = x0 - d0.parse_time > d1.parse_time - x0 ? d1 : d0;
+ 
+      focus.attr('transform', `translate(${x(d.parse_time)}, ${y(d.format_price_eur)})`);
+      focus.select('line.x')
+        .attr('x1', 0)
+        .attr('x2', -x(d.parse_time))
+        .attr('y1', 0)
+        .attr('y2', 0);
+
+      focus.select('line.y')
+        .attr('x1', 0)
+        .attr('x2', 0)
+        .attr('y1', 0)
+        .attr('y2', height - y(d.format_price_eur));
+
+      var content = 'Price: ' + d.format_price_eur 
+                  + " €<br>" 
+                  + 'Time: ' + d.format_time ;
+
+      focus.select('text').html(content);
+
+      // var new_data = rData.filter(function(item){
+      //     return item.format_time==d.format_time;         
+      // });
+      // hG.update(new_data.map(function(v){ 
+      //   return [v.symbol,v.total_supply];}), barColor);
+      }
+
+      // create function to update line-chart. This will be used by histogram.
+    lC.update = function(nD){
+      cur_data = nD;
+      // Scale the range of the data
+      x.domain(d3.extent(nD, function(d) { return d.parse_time; }));
+      // y.domain(d3.extent(nD, function(d) { return d.format_price_eur; }));
+      y.domain([d3.min(nD, function(d) { var val = parseFloat(d.format_price_eur); return (val- val/20); }), d3.max(nD, function(d) { var val = parseFloat(d.format_price_eur); return (val + val/20); })]);
+      
+      var svg = d3.select(id).transition();
+
+      svg.select(".lineChart")   // change the line
+              .duration(500)
+              .attr("d", valueline(nD));
+      svg.select(".x.axislC")   // change the line
+              .duration(200)
+              .call(d3.axisBottom(x));
+      svg.select(".y.axislC")   // change the line
+              .duration(200)
+              .call(d3.axisLeft(y));
+    }
+
+    return lC;
+  }
+
+  function bubleChart(bD){
+    var bC={};  
+    var diameter = 225,
+    format = d3.format(",d"),
+    color = d3.scaleOrdinal(d3.schemeCategory10);
+
+    var bsvg = d3.select(id).append("svg")
+        .attr("width", diameter)
+        .attr("height", diameter)
+        .attr("class", "bubble");
+
+    var div = d3.select(id).append("div")   
+    .attr("class", "tooltip")               
+    .style("opacity", 0);
+
+    var format = d3.format(",d");
+
+    var pack = d3.pack()
+      .size([diameter, diameter])
+      .padding(1.5);
+
+    var root = d3.hierarchy({children: bD})
+      .sum(function(d) { return d.bc_data; })
+      .sort(function(a) { return a.rank; })
+      .each(function(d) {
+        if (id = d.data.id) {
+          var id, i = id.lastIndexOf(".");
+          d.id = d.data.symbol;
+          d.name = id;
+          d.rank = d.data.rank;
+        }
+      });
+
+    var node = bsvg.selectAll(".node")
+      .data(pack(root).leaves())
+      .enter().append("g")
+        .attr("class", "node")
+        .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+
+    node.append("circle")
+        .attr("id", function(d) { return d.id; })
+        .attr("r", function(d) { return d.r; })
+        .style("fill", function(d) { return color(d.name); })
+        .attr('stroke', function(d) { d3.rgb(color(d.name)).darker(); })
+        .on('mouseover', showDetail)
+        .on('mouseout', hideDetail);
+
+    node.append("clipPath")
+        .attr("id", function(d) { return "clip-" + d.id; })
+        .append("use")
+        .attr("xlink:href", function(d) { return "#" + d.id; });
+
+    // node.append("text")
+    //     .attr("clip-path", function(d) { return "url(#clip-" + d.rank + ")"; })
+    //     .selectAll("tspan")
+    //     .data(function(d) { return d.rank.split(/(?=[A-Z][^A-Z])/g); })
+    //     .enter().append("tspan")
+    //     .attr("x", function(d, i, nodes) { return -16 - (i - nodes.length / 2 - 0.5) * 10; })
+    //     .attr("y", function(d, i, nodes) { return 13 + (i - nodes.length / 2 - 0.5) * 10; })
+    //     .text(function(d) { return d; });
+
+    // node.append("title")
+        // .text(function(d) { return d.id + "\n" + format(d.value); });
+    
+    bC.update = function(bD){
+      // transition
+      var t = d3.transition()
+          .duration(700);
+
+      // hierarchy
+      var h = d3.hierarchy({children: bD})
+          .sum(function(d) { return d.bc_data; })
+          .sort(function(a) { return a.rank; })
+          .each(function(d) {
+            if (id = d.data.id) {
+              var id, i = id.lastIndexOf(".");
+              d.id = d.data.symbol;
+              d.name = id;
+              d.rank = d.data.rank;
+            }
+          });
+      //JOIN
+      // bsvg.selectAll(".node").remove();
+
+      var node = bsvg.selectAll(".node").remove().exit()
+          .data(pack(h).leaves())
+          .enter().append("g")
+        .attr("class", "node")
+        .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+
+      node.append("circle")
+          .transition().duration(500)
+          .attr("id", function(d) { return d.id; })
+          .attr("r", function(d) { return d.r; })
+          .style("fill", function(d) { return color(d.name); })
+          .attr('stroke', function(d) { d3.rgb(color(d.name)).darker(); })
+
+      node.selectAll("circle")
+          .on('mouseover', showDetail)
+          .on('mouseout', hideDetail);
+
+      node.append("clipPath")
+          .attr("id", function(d) { return "clip-" + d.id; })
+          .append("use")
+          .attr("xlink:href", function(d) { return "#" + d.id; });
+
+        // text.enter().append("text")
+        //     .attr("opacity", 1e-6)
+        //     .attr("x", function(d){ return d.x; })
+        //     .attr("y", function(d){ return d.y; })
+        //     .text(function(d){ return d.id; })
+        //   .transition(t)
+        //     .attr("opacity", 1);
+      }
+
+    function showDetail(d) {
+      // change outline to indicate hover state.
+      d3.select(this).attr('stroke', 'black');
+
+      var content = '<span class="name">Symbol: </span><span class="value">' +
+                  d.id +
+                  '</span><br/>' +
+                   '<span class="name">Name: </span><span class="value">' +
+                  d.name +
+                  '</span><br/>' +
+                  '<span class="name">Cap Market: </span><span class="value">' +
+                  d3.format(",s")(d.value) +
+                  ' €</span><br/>'+
+                  '<span class="name">Rank: </span><span class="value">#' +
+                  d.rank +
+                  '</span>';
+
+      div.transition()        
+                .duration(200)
+                .style("opacity", .9);    
+      div.html(content)
+          .style("background-color", "#fff")
+          .style("border", "2px solid #000")
+          .style("left", (d3.event.pageX + 30) + "px")     
+          .style("top", (d3.event.pageY - 30) + "px");
+
+      // filter for selected state.
+      var st = cur_data_time.filter(function(s){ return s.symbol == d.id;})[0];
+
+      var nD = [
+        { type: 'available_supply', freq: st.available_supply},
+        { type: 'unavailable_supply', freq: st.unavailable_supply }
+      ];
+
+      var nLD = rData.filter(function(s){
+          return s.symbol==d.id;         
+      });                  
+      // call update functions of pie-chart and legend.    
+      pC.update(nD);
+      lC.update(nLD);
+      leg.update(nD);
+
+    }
+
+      /*
+       * Hides tooltip
+       */
+    function hideDetail(d) {
+      // reset outline
+      d3.select(this)
+        .attr('stroke', d3.rgb(color(d.name)).darker());
+
+      div.transition()
+                .duration(100)
+                .style("opacity", 0);
+
+      div.html("")
+          .style("background-color", "#3c546b")
+          .style("border", "2px solid #3c546b")
+          .style("left", "0px")
+          .style("top", "0px");
+
+      // call update functions of pie-chart and legend. 
+      pC.update(tF);
+      // lC.update(cD);
+      leg.update(tF);
+    }
+
+    return bC;
+  }
+
+  // function to handle legend.
+  function legend(lD){
+    var leg = {};
+        
+    // create table for legend.
+    var legend = d3.select(id).append("table").attr('class','legend');
+    
+    // create one row per segment.
+    var tr = legend.append("tbody").selectAll("tr").data(lD).enter().append("tr");
+        
+    // create the first column for each segment.
+    tr.append("td").append("svg").attr("width", '16').attr("height", '16').append("rect")
+        .attr("width", '16').attr("height", '16')
+        .attr("fill",function(d){ return segColor(d.type); });
+        
+    // create the second column for each segment.
+    tr.append("td").text(function(d){ return d.type;});
+
+    // create the third column for each segment.
+    tr.append("td").attr("class",'legendFreq')
+        .text(function(d){ return d3.format(".4s")(parseInt(d.freq)); }); //(parseInt(d / 1000000)) + "M";
+
+    // create the fourth column for each segment.
+    tr.append("td").attr("class",'legendPerc')
+        .text(function(d){ return getLegend(d,lD);});
+
+    // Utility function to be used to update the legend.
+    leg.update = function(nD){
+        // update the data attached to the row elements.
+        var l = legend.select("tbody").selectAll("tr").data(nD);
+
+        // update the frequencies.
+        l.select(".legendFreq").text(function(d){ return d3.format(".4s")(parseInt(d.freq)); }); //d3.format(".4s")(parseInt(d[1])) + "€"
+
+        // update the percentage column.
+        l.select(".legendPerc").text(function(d){ return getLegend(d,nD);});        
+    }
+    
+    function getLegend(d,aD){ // Utility function to compute percentage.
+        return d3.format(".2%")(d.freq/d3.sum(aD.map(function(v){ return v.freq ; })));
+    }
+
+    return leg;
+  }
+
+  var tF = [
+    { type: 'available_supply', freq: d3.sum(cur_data_time.map(function(t){ return t.available_supply;}))},
+    { type: 'unavailable_supply', freq: d3.sum(cur_data_time.map(function(t){ return t.unavailable_supply;}))}
+  ]; 
+
+  var cD = rData.filter(function(item){
+      return item.symbol=="BTC";         
+  });
+
+  var sF = cur_data_time.map(function(d){return [d.symbol,d.total_supply];});
+
+  var bC = bubleChart(cur_data_time),
+      pC = pieChart(tF),
+      hG = histoGram(sF),
+      leg = legend(tF),
+      lC = lineChart(cD);
+
+  $("#datetimepicker1").on("dp.change", function(e) {
+
+    var time = e.date.format('YYYY-MM-DD HH:mm');
+    console.log(time);
+    var split = time.split(" ");
+
+    // filter for selected state.
+    d3.json("littleOne.json", function(data) {
+      pData = process(data);
+
+      var new_data_date = pData.filter(function(item){
+        return item.format_date==split[0];         
+      });
+
+      var new_data_time = new_data_date.filter(function(item){
+        return item.format_time==split[1];         
+      });
+
+      var tF = [
+        { type: 'available_supply', freq: d3.sum(new_data_time.map(function(t){ return t.available_supply;}))},
+        { type: 'unavailable_supply', freq: d3.sum(new_data_time.map(function(t){ return t.unavailable_supply;}))}
+      ]; 
+
+      var cD = pData.filter(function(item){
+          return item.symbol=="BTC";         
+      });
+
+      var sF = new_data_time.map(function(d){return [d.symbol,d.total_supply];});
+
+      // call update functions of pie-chart and legend.
+      hG.update(new_data_time.map(function(d){return [d.symbol,d.total_supply];}), barColor);
+      pC.update(tF);
+      lC.update(cD);
+      bC.update(new_data_time);
+      leg.update(tF);
+
+      cur_data_time = new_data_time;
+      cur_data_date = new_data_date;
+    });
+    
+  });
+      
+};
+
+function process(rData){
+
+  function onlyUnique(input) { 
+    var lookup = {};
+    var result = [];
+
+    for (var item, i = 0; item = input[i++];) {
+      var name = item;
+      if (!(name in lookup)) {
+        lookup[name] = 1;
+        result.push(name);
+      }
+    }
+    return result;
+  }
+
+  function timestampToDate(input){
+
+    dateF = input.map(function(input){
+      var date = new Date(input.last_updated*1000);
+      // Hours part from the timestamp
+      var hours = "0" + date.getHours();
+      // Minutes part from the timestamp
+
+      var minutes = "0" + date.getMinutes();
+      // Seconds part from the timestamp
+      // var seconds = "0" + date.getSeconds();
+      var seconds = "00";
+
+      // Will display time in 10:30:23 format
+      var formattedTime = hours + ':' + minutes.substr(-2) + ':' + seconds.substr(-2); 
+      // console.log(date);
+      return formattedTime;
+    });
+    return dateF;
+  };
+
+  time = timestampToDate(rData);
+  uniqueTime = onlyUnique(time);
+
+  // Compute different value
+  rData.forEach(function(d){
+
+    var date = new Date(d.last_updated*1000);
+    var hours = "0" + date.getHours();
+    var round_min = Math.ceil(date.getMinutes() / 10) * 10;
+    var minutes = "0" + round_min;
+    var padded_day = ('0' + date.getDate()).slice(-2)
+    var padded_month = ('0' + (date.getMonth()+1)).slice(-2)
+
+    var parseTime = d3.timeParse("%Y-%m-%d %H:%M");
+    
+    d.format_date = date.getFullYear() + '-' + padded_month + '-' + padded_day;
+    d.format_time = hours.substr(-2) + ':' + minutes.substr(-2); 
+    d.format_price_eur = parseFloat(d.price_eur).toFixed(2);
+    d.parse_time = parseTime(d.format_date +" "+d.format_time);
+    d.unavailable_supply = parseFloat(d.total_supply) - parseFloat(d.available_supply);
+    d.bc_data = parseFloat(d.available_supply) * parseFloat(d.price_eur);
+
+  });
+
+  return rData;
+}
+
+$(document).ready(function () {
+    //your code here
+  d3.json("data/littleOne.json", function(data) {
+    draw('#dashboard', data, "2017-10-29", "22:30");
+  });
+
+  $(function () {
+    $('#datetimepicker1').datetimepicker({
+      format : 'YYYY-MM-DD HH:mm',
+      stepping: 10,
+      defaultDate: new Date(2017, 9, 29, 22, 30)
+    });
+  });
+
+});
+
+</script>
+</body>
